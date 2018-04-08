@@ -5,6 +5,7 @@ const _=require("lodash");
 const bcrypt = require("bcryptjs");
 
 const UserSchema = new mongoose.Schema({
+    userImage:{type:String, required:true},
     email:{
         type:String,
         required:true,
@@ -36,7 +37,7 @@ const UserSchema = new mongoose.Schema({
  UserSchema.methods.toJSON=function(){
     var user = this;
     var userObject = user.toObject();
-    return _.pick(userObject,['_id','email']);
+    return _.pick(userObject,['_id','email','userImage']);
 }
 
  UserSchema.methods.generateAuthToken = function () {
