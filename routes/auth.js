@@ -41,7 +41,7 @@ const upload = multer(
 module.exports = function(app){
 
         // USER REGISTER
-        app.post('/users', upload.single('userImage') ,(req, res) => {
+        app.post('/user/register', upload.single('userImage') ,(req, res) => {
             console.log(req.file);
             // var body = _.pick(req.body, ['email', 'password']);
             var body={
@@ -60,13 +60,38 @@ module.exports = function(app){
             })
         });
 
-        //GET USER
-        app.get('/users/me',authenticate,(req,res)=>{
-        res.send(req.user);
+        //GET ALL USERS
+        app.get('/users',authenticate,(req,res)=>{
+            User.find({}).then(users =>{
+                if(!users) return res.status(404).send();
+                res.send({users});
+            }).catch(err=>{
+                res.status(400).send();
+            });
+        });
+
+         //GET CURRENT AUTHENTICATED USER
+         app.get('/user/me',authenticate,(req,res)=>{
+            res.send(req.user);
+         });
+
+        //GET USER BY ID
+        app.get('/user/:id',authenticate,(req, res)=>{
+            let id = req.params.id;
+            if(!ObjectID.isValid(id)) return res.status(404).send();
+
+            User.findOne({
+                _id:id
+            }).then(user=>{
+                if(!user) return res.status(404).send();
+                res.send({user});
+            }).catch(err=>{
+                res.status(400).send();
+            });
         });
 
         // USER LOGIN
-        app.post('/users/login',(req,res)=>{
+        app.post('/user/login',(req,res)=>{
             var body = _.pick(req.body,['email','password']);
             console.log(body);
             User.findByCredentials(body.email,body.password).then((user)=>{
@@ -79,7 +104,7 @@ module.exports = function(app){
         });
 
         //FORGET PASSWORD
-        app.post('/users/forget',(req, res, next)=>{
+        app.post('/user/forget',(req, res, next)=>{
             console.log('email',req.body.email);
             async.waterfall([
                 // generate token and path it to the next function
@@ -143,7 +168,7 @@ module.exports = function(app){
         });
 
         //RESET PASSWORD
-        app.post('/users/reset/:token', function(req, res) {
+        app.post('/user/reset/:token', function(req, res) {
             console.log('password',req.body.password);
             async.waterfall([
               function(done) {
@@ -195,7 +220,7 @@ module.exports = function(app){
 
 
         // USER LOGOUT
-        app.delete('/users/me/token',authenticate,(req,res)=>{
+        app.delete('/user/logout',authenticate,(req,res)=>{
             req.user.removeToken(req.token).then(()=>{
                 res.status(200).send();
             }).catch((err)=>{
