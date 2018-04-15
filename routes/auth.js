@@ -3,54 +3,26 @@ const {ObjectID} = require("mongodb");
 const {mongoose} = require("../db/mongoose");
 const {User} = require("../models/user");
 const {authenticate} = require("../middleware/authenticate");
-const multer = require('multer');
 const async = require('async');
 const crypto = require('crypto');
 var nodemailer = require('nodemailer');
 var mg = require('nodemailer-mailgun-transport');
 
-// initialize multer and add configuration to it
-const storage = multer.diskStorage({
-    destination:function(req, file, cb){
-        cb(null,'./public/uploads/files');
-    },
-    filename:function(req, file, cb){
-        cb(null, new Date().toISOString() + file.originalname );
-    }
-});
-
-const fileFilter=(req, file, cb)=>{
-    if(file.mimetype === 'image/jpeg' || file.mimetype === 'image/png'){
-        console.log('ok');
-        cb(null, true);
-    }else{
-        console.log('error');
-        cb(null, false);
-    }
-}
-
-const upload = multer(
-    {
-        storage:storage,
-        limits:{
-            fileSize: 1024 * 1024 * 100
-        },
-        fileFilter:fileFilter
-    }); 
 
 module.exports = function(app){
 
         // USER REGISTER
-        app.post('/user/register', upload.single('userImage') ,(req, res) => {
-            console.log(req.file);
-            // var body = _.pick(req.body, ['email', 'password']);
+        app.post('/user/register',(req, res) => {
+
             var body={
-                userImage:req.file.path,
+                userName:req.body.userName,
+                name:req.body.name,
+                imageUrl:req.body.imageUrl,
                 email:req.body.email,
                 password:req.body.password
             }
             var user = new User(body);
-        
+
             user.save().then(() => {
             return user.generateAuthToken();
             }).then((token) => {
@@ -58,6 +30,35 @@ module.exports = function(app){
             }).catch((e) => {
             res.status(400).send(e);
             })
+        });
+
+
+        //UPDATE USER PROFILE
+        app.patch('/user/update/:id',authenticate,(req, res)=>{
+                let id = req.params.id;
+                if(!ObjectID.isValid(id)) return res.status(404).send();
+
+                // UPDATE USERNAME | NAME | IMAGE_URL
+                let updatedData = {};
+                if(req.body.userName){
+                  updatedData.userName = req.body.userName;
+                }
+                if(req.body.name){
+                  updatedData.name = req.body.name;
+                }
+                if(req.body.imageUrl){
+                  updatedData.imageUrl = req.body.imageUrl;
+                }
+
+                User.findByIdAndUpdate({
+                  _id:id
+                },{$set:updatedData},{new:true}).then(user=>{
+                  if(!user) return res.status(404).send();
+                    res.status(200).send(user);
+                }).catch(err=>{
+                    res.status(404).send();
+                })
+
         });
 
         //GET ALL USERS
@@ -123,10 +124,10 @@ module.exports = function(app){
                         res.status(400).send({error:'No account with that email address exists.'});
                         return res.redirect('/users/forget');
                       }
-              
+
                       user.resetPasswordToken = token;
                       user.resetPasswordExpires = Date.now() + 3600000; // 1 hour
-              
+
                       user.save(function(err) {
                         done(err, token, user);
                       });
@@ -139,9 +140,9 @@ module.exports = function(app){
                           domain: 'sandboxc8dd8ff058ec4b69a0d39b45e174e38b.mailgun.org'
                         }
                       }
-                      
+
                     var nodemailerMailgun = nodemailer.createTransport(mg(auth));
-                      
+
                     var mailOptions = {
                       to: user.email,
                       from: 'passwordreset@demo.com',
@@ -157,7 +158,7 @@ module.exports = function(app){
                       console.log('ok--------------->');
                     //   res.status(200).send({info:'An e-mail has been sent to ' + user.email + ' with further instructions.'});
                       done(err, 'done');
-                      
+
                     });
                   }
 
@@ -178,11 +179,11 @@ module.exports = function(app){
                     // res.status(400).send({error:'Password reset token is invalid or has expired.'});
                     return res.redirect('back');
                   }
-          
+
                   user.password = req.body.password;
                   user.resetPasswordToken = undefined;
                   user.resetPasswordExpires = undefined;
-          
+
                   user.save(function(err) {
                     console.log('user saved successfully');
                     done(err, user);
@@ -196,7 +197,7 @@ module.exports = function(app){
                       domain: 'sandboxc8dd8ff058ec4b69a0d39b45e174e38b.mailgun.org'
                     }
                   }
-                  
+
                 var nodemailerMailgun = nodemailer.createTransport(mg(auth));
 
                 var mailOptions = {

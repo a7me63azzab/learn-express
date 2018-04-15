@@ -23,6 +23,16 @@ PostSchema.methods.toJSON=function(){
     return _.pick(postObject,['_id','postImage','text','createdAt','_creator']);
 }
 
+// Sets the createdAt parameter equal to the current time
+PostSchema.pre('save', next => {
+  now = new Date();
+  if(!this.createdAt) {
+    this.createdAt = now;
+  }
+  next();
+});
+
+
 var Post = mongoose.model('Post',PostSchema);
 
 module.exports={Post};
