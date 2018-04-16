@@ -15,22 +15,33 @@ module.exports = function(app){
         // USER REGISTER
         app.post('/user/register',(req, res) => {
 
-            var body={
-                userName:req.body.userName,
-                name:req.body.name,
-                imageUrl:req.body.imageUrl,
-                email:req.body.email,
-                password:req.body.password
-            }
-            var user = new User(body);
+          //CHECK IF EMAIL IS REGISTERED BEFORE OR NOT
+          User.findOne({
+            email:req.body.email
+          }).then(user =>{
+              if(!user){
+                  var body={
+                      userName:req.body.userName,
+                      name:req.body.name,
+                      imageUrl:req.body.imageUrl,
+                      email:req.body.email,
+                      password:req.body.password
+                  }
+                  var user = new User(body);
 
-            user.save().then(() => {
-            return user.generateAuthToken();
-            }).then((token) => {
-            res.header('x-auth', token).send(user);
-            }).catch((e) => {
-            res.status(400).send(e);
-            })
+                  user.save().then(() => {
+                  return user.generateAuthToken();
+                  }).then((token) => {
+                  res.header('x-auth', token).send({isExist:false,user:user});
+                }).catch((err) => {
+                  res.status(400).send(err);
+                  })
+              }else{
+                return res.status(404).send({isExist:true});
+              }
+            }).catch(err=>{
+              res.status(404).send(err);
+            });
         });
 
 
