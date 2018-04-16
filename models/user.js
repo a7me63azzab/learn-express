@@ -90,7 +90,6 @@ const UserSchema = new mongoose.Schema({
 
 
   UserSchema.statics.findByCredentials= function(email,password){
-    console.log('entered');
     var User = this;
     return User.findOne({email}).then((user)=>{
            if(!user){
@@ -125,7 +124,6 @@ const UserSchema = new mongoose.Schema({
           next();
       }
   });
-
 
 
 var User = mongoose.model('User', UserSchema);

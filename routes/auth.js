@@ -5,6 +5,7 @@ const {User} = require("../models/user");
 const {authenticate} = require("../middleware/authenticate");
 const async = require('async');
 const crypto = require('crypto');
+const bcrypt = require("bcryptjs");
 var nodemailer = require('nodemailer');
 var mg = require('nodemailer-mailgun-transport');
 
@@ -61,6 +62,45 @@ module.exports = function(app){
 
         });
 
+        /* UPDATE USER PASSWORD
+        ------------------------- */
+         // [1] Check if the old passwrod is true or not
+         app.post('/user/password/check',authenticate,(req, res)=>{
+           let oldPassword = req.body.oldPassword;
+           User.findByCredentials(req.user.email,oldPassword).then((user)=>{
+              if(!user) return res.status(404).send({isValid:false});
+              res.status(200).send({isValid:true});
+           }).catch((err)=>{
+               res.status(404).send({isValid:false,error:err});
+           });
+         });
+
+         // [2] if old password is true then update user password
+         app.patch('/user/password/update',authenticate,(req, res)=>{
+
+                 bcrypt.genSalt(10,(err,salt)=>{
+                   if(err) return res.status(404).send({success:false});
+                   bcrypt.hash(req.body.newPassword,salt,(err,hash)=>{
+                     if(err) return res.status(404).send({success:false});
+                     User.findByIdAndUpdate({
+                       _id:req.user._id
+                     },
+                     {
+                       $set:{
+                         password:hash
+                      }
+                   },{new:true}).then(user=>{
+                      if(!user) return res.status(404).send({success:false});
+                      res.status(200).send({success:true,user:user});
+                   }).catch(err=>{
+                     res.status(404).send({success:false,error:err});
+                   });
+                   });
+                 });
+
+         });
+
+
         //GET ALL USERS
         app.get('/users',authenticate,(req,res)=>{
             User.find({}).then(users =>{
@@ -94,7 +134,6 @@ module.exports = function(app){
         // USER LOGIN
         app.post('/user/login',(req,res)=>{
             var body = _.pick(req.body,['email','password']);
-            console.log(body);
             User.findByCredentials(body.email,body.password).then((user)=>{
                 return  user.generateAuthToken().then((token)=>{
                     res.header('x-auth', token).send(user);
