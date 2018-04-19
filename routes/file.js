@@ -42,7 +42,7 @@ const upload = multer(
 module.exports = (app)=>{
 
     //UPLOAD NEW FILE
-    app.post('/file/upload',authenticate,upload.single('file'),(req, res)=>{
+    app.post('/file/upload',upload.single('file'),(req, res)=>{
         console.log(req.file);
         let fileData = {
             originalName:req.file.originalname,
@@ -72,6 +72,17 @@ module.exports = (app)=>{
             res.status(200).send(file);
         }).catch(err=>{
             res.status(404).send();
+        });
+    });
+
+    //GET ALL FILES
+    app.get('/files',(req, res)=>{
+        console.log('get all files');
+        File.find({}).then(files=>{
+            if(!files) return res.status(404).send();
+            res.status(200).send(files);
+        }).catch(err=>{
+            res.status(404).send(err);
         });
     });
 
