@@ -11,6 +11,13 @@ const UserSchema = new mongoose.Schema({
       firstName:{type:String},
       lastName:{type:String}
     },
+    phoneNum:{
+        type : String , unique : true, required : true
+    },
+    phoneNumberVerified: {type:Boolean ,default:false},
+    verificationCode:{
+        type:Number
+    },
     email:{
         type:String,
         required:true,
@@ -48,7 +55,7 @@ const UserSchema = new mongoose.Schema({
  UserSchema.methods.toJSON=function(){
     var user = this;
     var userObject = user.toObject();
-    return _.pick(userObject,['_id','email','userName','imageUrl']);
+    return _.pick(userObject,['_id','email','userName','phoneNum','phoneNumberVerified','imageUrl']);
 }
 
  UserSchema.methods.generateAuthToken = function () {

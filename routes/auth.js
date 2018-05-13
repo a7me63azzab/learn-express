@@ -10,6 +10,17 @@ var nodemailer = require('nodemailer');
 var mg = require('nodemailer-mailgun-transport');
 
 
+const accountSid = 'AC686904f73e1e29fc675d0a37560b5e29';
+const authToken = 'f2c5e0fa58f4ae49c1890c807cfdfbb4';
+const client = require('twilio')(accountSid,authToken);
+
+
+
+// GENERATE RANDOM CODE
+var rand = function(low, high) {
+  return Math.floor(Math.random() * (high - low) + low);
+}; 
+
 module.exports = function(app){
 
         // USER REGISTER
@@ -23,6 +34,7 @@ module.exports = function(app){
                   var body={
                       userName:req.body.userName,
                       name:req.body.name,
+                      phoneNum:req.body.phoneNum,
                       imageUrl:req.body.imageUrl,
                       email:req.body.email,
                       password:req.body.password
@@ -153,6 +165,62 @@ module.exports = function(app){
                 res.status(400).send();
             });
         });
+
+        // LOGIN USER WITH PHONE NUMBER AND IF NUMBER VERIFIED GENERATE AUTHTOKEN
+        app.post('/user/send',(req,res)=>{
+            let phoneNum = req.body.phoneNum;
+            if(!req.body.phoneNum) return res.status(400).send({message: 'there is no phone number !'})
+            
+            // get the user by phone number
+            User.findOne({
+              phoneNum:phoneNum
+            }).then(user => {
+              if(!user) return res.status(404).send({message: 'There is no user with this phone number'});
+              var verificationCode = rand(100000, 999999);
+              console.log('verificationCode',verificationCode);
+              client.messages.create({
+                  to:phoneNum,
+                  from:'+12672027059',
+                  body:`Your code is ${verificationCode}`
+                }).then(message=>{
+                    console.log(message.sid)
+                    // Add verification code to user collection
+                    User.findByIdAndUpdate({
+                      _id:user._id
+                    },{$set:{verificationCode:verificationCode}},{new:true}).then(user=>{
+                      if(!user) return res.status(404).send();
+                        res.status(200).send(user);
+                    }).catch(err=>{
+                        res.status(404).send();
+                    })
+                }).catch(err=>{
+                    console.log(err)
+                })
+
+            })
+        })
+
+        // Verify phone number to login user
+        app.post('/user/verify',(req, res)=>{
+          let code = req.body.verificationCode;
+          if(!req.body.verificationCode) return res.status(400).send({message: 'there is no verification Code !'});
+          User.findOne({
+            verificationCode:code
+          }).then(user=>{
+            if(!user) return res.status(404).send({message: 'Code is not correct'});
+            // update verified number is user
+            User.findByIdAndUpdate({
+              _id:user._id
+            },{$set:{phoneNumberVerified:true ,verificationCode:''}},{new:true}).then(user=>{
+              if(!user) return res.status(404).send();
+              return  user.generateAuthToken().then((token)=>{
+                res.header('x-auth', token).send(user);
+              });
+            }).catch(err=>{
+                res.status(404).send();
+            })
+          })
+        })
 
         //FORGET PASSWORD
         app.post('/user/forget',(req, res, next)=>{
