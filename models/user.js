@@ -34,16 +34,6 @@ const UserSchema = new mongoose.Schema({
         require:true,
         minlength:6,
     },
-    tokens:[{
-        access:{
-            type:String,
-            require:true
-        },
-        token:{
-            type:String,
-            require:true
-        }
-    }],
     posts:[{
         type:mongoose.Schema.Types.ObjectId,
         ref:'Post'
@@ -55,19 +45,13 @@ const UserSchema = new mongoose.Schema({
  UserSchema.methods.toJSON=function(){
     var user = this;
     var userObject = user.toObject();
-    return _.pick(userObject,['_id','email','userName','phoneNum','phoneNumberVerified','imageUrl']);
+    return _.pick(userObject,['_id','email','userName','name','phoneNum','phoneNumberVerified','imageUrl']);
 }
 
  UserSchema.methods.generateAuthToken = function () {
     var user = this;
-    var access = 'auth';
-    var token = jwt.sign({_id: user._id.toHexString(), access},'abc123').toString();
-
-    user.tokens.push({access, token});
-
-    return user.save().then(() => {
-      return token;
-    });
+    var token = jwt.sign({_id: user._id.toHexString()},'abc123').toString();
+    return token;
   };
 
   UserSchema.statics.findByToken = function(token){
@@ -79,20 +63,17 @@ const UserSchema = new mongoose.Schema({
          return Promise.reject();
       }
       return User.findOne({
-          '_id':decoded._id,
-          'tokens.token':token,
-          'tokens.access':'auth'
+          '_id':decoded._id
       })
   }
 
-  UserSchema.methods.removeToken = function(token){
+UserSchema.methods.removeToken = function(token){
     var user = this;
     return user.update({
         $pull:{
             tokens:{token}
         }
     });
-
   }
 
 

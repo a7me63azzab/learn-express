@@ -1,30 +1,81 @@
 const _=require("lodash");
+const {File} = require('../models/file');
 const {ObjectID} = require("mongodb");
 const {mongoose} = require("../db/mongoose");
 const {User} = require("../models/user");
 const {authenticate} = require("../middleware/authenticate");
 const async = require('async');
-const crypto = require('crypto');
+//const crypto = require('crypto');
+let crypto = require('crypto-js');
 const bcrypt = require("bcryptjs");
 var nodemailer = require('nodemailer');
 var mg = require('nodemailer-mailgun-transport');
+const multer = require('multer');
+const fs = require('fs');
+let randomstring = require('randomstring');
+
 
 
 const accountSid = 'AC686904f73e1e29fc675d0a37560b5e29';
 const authToken = 'f2c5e0fa58f4ae49c1890c807cfdfbb4';
 const client = require('twilio')(accountSid,authToken);
 
-
+//GENERATE RANDOM STRING
+let _generateUniqueFileName = () => crypto.SHA256(randomstring.generate() + new Date().getTime() + 'hasve').toString();
 
 // GENERATE RANDOM CODE
 var rand = function(low, high) {
   return Math.floor(Math.random() * (high - low) + low);
 }; 
 
+
+// initialize multer and add configuration to it
+const storage = multer.diskStorage({
+  destination:function(req, file, cb){
+      cb(null,'./public/uploads/files');
+  },
+  filename:function(req, file, cb){
+      cb(null, _generateUniqueFileName() + file.originalname );
+  }
+});
+
+const fileFilter=(req, file, cb)=>{
+  if(file.mimetype === 'image/jpeg' || file.mimetype === 'image/png'){
+      console.log('ok');
+      cb(null, true);
+  }else{
+      console.log('error');
+      cb(null, false);
+  }
+}
+
+const upload = multer(
+  {
+      storage:storage,
+      limits:{
+          fileSize: 1024 * 1024 * 100
+      },
+      fileFilter:fileFilter
+  });
+
 module.exports = function(app){
 
         // USER REGISTER
-        app.post('/user/register',(req, res) => {
+        app.post('/user/register',upload.single('file'),(req, res) => {
+
+          console.log(req.file);
+          if(req.file){
+            let fileData = {
+              originalName:req.file.originalname,
+              fileName:req.file.filename,
+              mimeType:req.file.mimetype,
+              size:req.file.size,
+              path:req.file.path,
+              url:"http://localhost:5000/"+req.file.path
+          }
+          let file = new File(fileData);
+          file.save();
+          }
 
           //CHECK IF EMAIL IS REGISTERED BEFORE OR NOT
           User.findOne({
@@ -35,24 +86,26 @@ module.exports = function(app){
                       userName:req.body.userName,
                       name:req.body.name,
                       phoneNum:req.body.phoneNum,
-                      imageUrl:req.body.imageUrl,
+                      imageUrl:req.file.path ? "http://localhost:5000/"+req.file.path :'',
                       email:req.body.email,
                       password:req.body.password
                   }
                   var user = new User(body);
 
-                  user.save().then(() => {
+                  user.save().then(user => {
+                    console.log('User saved')
                   return user.generateAuthToken();
                   }).then((token) => {
-                  res.header('x-auth', token).send({isExist:false,user:user});
+                  console.log('token', token)
+                  //user["token"] = token
+                  console.log('user',user)
+                  res.status(200).json({user, token});
                 }).catch((err) => {
-                  res.status(400).send(err);
+                  res.status(400).json({message:'token error'});
                   })
               }else{
-                return res.status(404).send({isExist:true});
+                return res.status(404).json({message:'User already exist'});
               }
-            }).catch(err=>{
-              res.status(404).send(err);
             });
         });
 
@@ -159,10 +212,10 @@ module.exports = function(app){
             var body = _.pick(req.body,['email','password']);
             User.findByCredentials(body.email,body.password).then((user)=>{
                 return  user.generateAuthToken().then((token)=>{
-                    res.header('x-auth', token).send(user);
+                    res.status(200).json({user, token});
                 });
             }).catch((err)=>{
-                res.status(400).send();
+                res.status(400).json({message:'Email or password not valid'});
             });
         });
 

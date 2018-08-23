@@ -15,7 +15,7 @@ const FileSchema = new mongoose.Schema({
 FileSchema.methods.toJSON=function(){
     var file = this;
     var fileObject = file.toObject();
-    return _.pick(fileObject,['_id','url']);
+    return _.pick(fileObject,['_id','originalName','url']);
 }
 
 // Sets the createdAt parameter equal to the current time

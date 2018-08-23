@@ -13,36 +13,37 @@ let _generateUniqueFileName = () => crypto.SHA256(randomstring.generate() + new 
 // initialize multer and add configuration to it
 const storage = multer.diskStorage({
     destination:function(req, file, cb){
-        cb(null,'./public/uploads/files');
+        cb(null,'./public/uploads/audios');
     },
     filename:function(req, file, cb){
         cb(null, _generateUniqueFileName() + file.originalname );
     }
 });
 
-const fileFilter=(req, file, cb)=>{
-    if(file.mimetype === 'image/jpeg' || file.mimetype === 'image/png'){
-        console.log('ok');
-        cb(null, true);
-    }else{
-        console.log('error');
-        cb(null, false);
-    }
-}
+// const fileFilter=(req, file, cb)=>{
+//     if(file.mimetype === 'image/jpeg' || file.mimetype === 'image/png'){
+//         console.log('ok');
+//         cb(null, true);
+//     }else{
+//         console.log('error');
+//         cb(null, false);
+//     }
+// }
 
 const upload = multer(
     {
         storage:storage,
         limits:{
-            fileSize: 1024 * 1024 * 100
-        },
-        fileFilter:fileFilter
+            fileSize: 6000000
+        }
+        //,
+        //fileFilter:fileFilter
     });
 
 module.exports = (app)=>{
 
     //UPLOAD NEW FILE
-    app.post('/file/upload',upload.single('file'),(req, res)=>{
+    app.post('/audio/upload',upload.single('file'),(req, res)=>{
         console.log(req.file);
         let fileData = {
             originalName:req.file.originalname,
@@ -50,7 +51,7 @@ module.exports = (app)=>{
             mimeType:req.file.mimetype,
             size:req.file.size,
             path:req.file.path,
-            url:"http://localhost:3000/"+req.file.path
+            url:"http://localhost:5000/"+req.file.path
         }
         let file = new File(fileData);
         file.save().then((file)=>{
@@ -62,7 +63,7 @@ module.exports = (app)=>{
     });
 
     //GET FILE BY ID
-    app.get('/file/:id',authenticate,(req, res)=>{
+    app.get('/audio/:id',authenticate,(req, res)=>{
         let id = req.params.id;
         if(!ObjectID.isValid(id)) return res.status(404).send();
         File.findOne({
@@ -75,10 +76,10 @@ module.exports = (app)=>{
         });
     });
 
-    //GET ALL FILES
-    app.get('/files',(req, res)=>{
+    //GET ALL AUDIOS
+    app.get('/audios',(req, res)=>{
         console.log('get all files');
-        File.find({}).then(files=>{
+        File.find({mimeType : { $regex: "audio/*"}}).then(files=>{
             if(!files) return res.status(404).send();
             res.status(200).send(files);
         }).catch(err=>{
@@ -89,11 +90,11 @@ module.exports = (app)=>{
 
 
     //DELETE CURRENT AUTHENICATED USER FILE
-    app.delete('/file/delete',authenticate,(req, res)=>{
+    app.delete('/audio/delete',authenticate,(req, res)=>{
 
         //REMOVE FILE FROM SYSTEM STORAGE
         let fileName = req.user.imageUrl.split('/').pop();
-        fs.unlink(`public/uploads/files/${fileName}`, (err)=> {
+        fs.unlink(`public/uploads/audios/${fileName}`, (err)=> {
             if(err && err.code == 'ENOENT') {
                 // file doens't exist
                 console.info("File doesn't exist, won't remove it.");
@@ -118,7 +119,7 @@ module.exports = (app)=>{
 
 
     //DELETE FILE BY ID
-    app.delete('/file/delete/:id',authenticate,(req, res)=>{
+    app.delete('/audio/delete/:id',authenticate,(req, res)=>{
         let id = req.params.id;
         if(!ObjectID.isValid(id)) return res.status(404).send();
         File.findByIdAndRemove({
@@ -127,7 +128,7 @@ module.exports = (app)=>{
             if(!file) return res.status(404).send({err:true});
             //REMOVE FILE FROM SYSTEM STORAGE
             let fileName = file.url.split('/').pop();
-            fs.unlink(`public/uploads/files/${fileName}`, (err)=> {
+            fs.unlink(`public/uploads/audios/${fileName}`, (err)=> {
                 if(err && err.code == 'ENOENT') {
                     // file doens't exist
                     console.info("File doesn't exist, won't remove it.");

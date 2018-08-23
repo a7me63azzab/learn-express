@@ -6,11 +6,12 @@ var authenticate = (req ,res ,next)=>{
    if(!user){
        return Promise.reject();
    }
+   console.log('user',user)
    req.user = user;
    req.token = token; 
    next();
  }).catch((err)=>{
-       res.status(401).send();
+       res.status(401).send({message:'User not valid'});
  });
 }
 
