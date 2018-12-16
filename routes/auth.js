@@ -80,7 +80,7 @@ module.exports = function (app) {
         mimeType: req.file.mimetype,
         size: req.file.size,
         path: req.file.path,
-        url: "http://192.168.1.2:5000/" + req.file.path
+        url: "http://192.168.1.4:5000/" + req.file.path
       }
       let file = new File(fileData);
       file.save();
@@ -95,23 +95,24 @@ module.exports = function (app) {
           userName: req.body.userName,
           name: req.body.name,
           phoneNum: req.body.phoneNum,
-          imageUrl: req.file.path ? "http://192.168.1.2:5000/" + req.file.path : '',
+          imageUrl: req.file.path ? "http://192.168.1.4:5000/" + req.file.path : '',
           email: req.body.email,
           password: req.body.password
         }
         var user = new User(body);
 
         user.save().then(user => {
-          console.log('User saved')
+          console.log('User saved', user)
           return user.generateAuthToken();
         }).then((token) => {
           var newUser = {
+            userId: user._id,
+            token: token,
             userName: user.userName,
-            fullName: user.fullName,
+            fullName: user.name,
             email: user.email,
             phoneNum: user.phoneNum,
             imageUrl: user.imageUrl,
-            token: token
           };
           console.log('user=>', newUser);
           res.status(200).json(newUser);
@@ -146,6 +147,8 @@ module.exports = function (app) {
       updatedData.imageUrl = req.body.imageUrl;
     }
 
+    console.log('jjjjjjjj', req.body);
+
     User.findByIdAndUpdate({
       _id: id
     }, {
@@ -154,9 +157,17 @@ module.exports = function (app) {
       new: true
     }).then(user => {
       if (!user) return res.status(404).send();
-      res.status(200).send(user);
+      var newUser = {
+        userId: user._id,
+        userName: user.userName,
+        fullName: user.name,
+        email: user.email,
+        phoneNum: user.phoneNum,
+        imageUrl: user.imageUrl,
+      };
+      res.status(200).json(newUser);
     }).catch(err => {
-      res.status(404).send();
+      res.status(404).send(err);
     })
 
   });
@@ -166,15 +177,16 @@ module.exports = function (app) {
   // [1] Check if the old passwrod is true or not
   app.post('/user/password/check', authenticate, (req, res) => {
     let oldPassword = req.body.oldPassword;
+    console.log('oldpassword :', oldPassword);
     User.findByCredentials(req.user.email, oldPassword).then((user) => {
-      if (!user) return res.status(404).send({
+      if (!user) return res.status(404).json({
         isValid: false
       });
-      res.status(200).send({
+      res.status(200).json({
         isValid: true
       });
     }).catch((err) => {
-      res.status(404).send({
+      res.status(404).json({
         isValid: false,
         error: err
       });
@@ -201,15 +213,15 @@ module.exports = function (app) {
         }, {
           new: true
         }).then(user => {
-          if (!user) return res.status(404).send({
+          if (!user) return res.status(404).json({
             success: false
           });
-          res.status(200).send({
+          res.status(200).json({
             success: true,
-            user: user
+
           });
         }).catch(err => {
-          res.status(404).send({
+          res.status(404).json({
             success: false,
             error: err
           });
@@ -246,11 +258,18 @@ module.exports = function (app) {
       _id: id
     }).then(user => {
       if (!user) return res.status(404).send();
-      res.send({
-        user
-      });
+      var newUser = {
+        userId: user._id,
+        userName: user.userName,
+        fullName: user.name,
+        email: user.email,
+        phoneNum: user.phoneNum,
+        imageUrl: user.imageUrl,
+        token: token
+      };
+      res.json(newUser);
     }).catch(err => {
-      res.status(400).send();
+      res.status(400).send(err);
     });
   });
 
