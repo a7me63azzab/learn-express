@@ -63,6 +63,7 @@ UserSchema.methods.generateAuthToken = function () {
     var token = jwt.sign({
         _id: user._id.toHexString()
     }, 'abc123').toString();
+    console.log('token ---*--*-',token);
     return token;
 };
 
@@ -100,10 +101,12 @@ UserSchema.statics.findByCredentials = function (email, password) {
             console.log('user not found');
             return Promise.reject();
         }
+        console.log('user found success');
         return new Promise((resolve, reject) => {
             bcrypt.compare(password, user.password, (err, res) => {
                 if (res) {
                     resolve(user);
+                    console.log('user found success');
                 } else {
                     console.log('password not match');
                     reject();

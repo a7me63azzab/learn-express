@@ -15,8 +15,8 @@ const {
   authenticate
 } = require("../middleware/authenticate");
 const async = require('async');
-//const crypto = require('crypto');
-let crypto = require('crypto-js');
+const crypto = require('crypto');
+// let crypto = require('crypto-js');
 const bcrypt = require("bcryptjs");
 var nodemailer = require('nodemailer');
 var mg = require('nodemailer-mailgun-transport');
@@ -273,22 +273,35 @@ module.exports = function (app) {
     });
   });
 
-  // USER LOGIN
+
   app.post('/user/login', (req, res) => {
-    var body = _.pick(req.body, ['email', 'password']);
-    User.findByCredentials(body.email, body.password).then((user) => {
-      return user.generateAuthToken().then((token) => {
-        res.status(200).json({
-          user,
-          token
-        });
-      });
+    console.log('new body ', req.body.email, req.body.password);
+    // var body = _.pick(req.body, ['email', 'password']);
+    // console.log('new body ', body);
+    User.findByCredentials(req.body.email, req.body.password).then((user) => {
+      console.log('user pppp ', user);
+      var token = user.generateAuthToken();
+      console.log('token pppp ', token);
+      var newUser = {
+        userId: user._id,
+        token: token,
+        userName: user.userName,
+        fullName: user.name,
+        email: user.email,
+        phoneNum: user.phoneNum,
+        imageUrl: user.imageUrl,
+      };
+      console.log('new user ', newUser);
+      res.status(200).json(newUser);
+
     }).catch((err) => {
       res.status(400).json({
         message: 'Email or password not valid'
       });
     });
   });
+
+
 
   // LOGIN USER WITH PHONE NUMBER AND IF NUMBER VERIFIED GENERATE AUTHTOKEN
   app.post('/user/send', (req, res) => {
@@ -373,8 +386,9 @@ module.exports = function (app) {
     async.waterfall([
       // generate token and path it to the next function
       function (done) {
-        crypto.randomBytes(20, function (err, buf) {
+        crypto.randomBytes(3, function (err, buf) {
           var token = buf.toString('hex');
+          console.log('token',token);
           done(err, token);
         });
       },
